@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.*.local
+**/.env
+
+# Build output
+dist/
+build/
+**/dist/
+**/build/
+
+# SQLite database
+server/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo
+
+# Claude Code tooling
+.claude/
+.claude-flow/
+**/. claude-flow/
+.swarm/
+.mcp.json
