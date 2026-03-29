@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -10,27 +10,30 @@ import {
   Chip,
   Alert,
   Snackbar,
-  ToggleButton,
-  ToggleButtonGroup,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
-import { Article, VideoLibrary, ContentCopy, ViewCarousel, Twitter } from '@mui/icons-material';
+import { VideoLibrary, ContentCopy, ViewCarousel } from '@mui/icons-material';
 import NewsGraphicCard from '../components/NewsGraphicCard';
 
-type Platform = 'faceless-reel' | 'instagram-carousel' | 'linkedin-post' | 'twitter-thread';
+type Format = 'instagram-carousel' | 'faceless-reel';
 
-interface PlatformOption {
-  value: Platform;
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-}
+const CAROUSEL_CATEGORIES = [
+  'Data Drop (Market Stats)',
+  'Investor Trap (Mistakes)',
+  'Area Arbitrage (Comparisons)',
+  'Global Shift (Macro)',
+] as const;
 
-const PLATFORMS: PlatformOption[] = [
-  { value: 'faceless-reel', label: 'Faceless Reel', icon: <VideoLibrary />, color: '#FF4C4C' },
-  { value: 'instagram-carousel', label: 'Instagram Carousel', icon: <ViewCarousel />, color: '#E1306C' },
-  { value: 'linkedin-post', label: 'LinkedIn Post', icon: <Article />, color: '#0A66C2' },
-  { value: 'twitter-thread', label: 'Twitter Thread', icon: <Twitter />, color: '#1DA1F2' },
-];
+type CarouselCategory = typeof CAROUSEL_CATEGORIES[number];
 
 function renderFacelessReel(
   content: Record<string, unknown>,
@@ -203,125 +206,40 @@ function renderInstagramCarousel(
   );
 }
 
-function renderLinkedInPost(
-  content: Record<string, unknown>,
-  handleCopy: (key: string, text: string) => void,
-) {
-  const viralHeadline = content.viralHeadline as string;
-  const postBody = content.postBody as string;
-
-  return (
-    <>
-      <Box mb={4} display="flex" justifyContent="center">
-        <Box>
-          <Typography variant="subtitle1" fontWeight={600} mb={2} textAlign="center" sx={{ color: '#EAB308' }}>
-            Social Media Graphic
-          </Typography>
-          <NewsGraphicCard viralHeadline={viralHeadline} imageUrl={content.imageUrl as string | undefined} />
-        </Box>
-      </Box>
-
-      <Paper sx={{ p: 2.5, border: '1px solid rgba(10,102,194,0.25)' }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Chip
-            label="LinkedIn Post"
-            size="small"
-            sx={{ bgcolor: 'rgba(10,102,194,0.15)', color: '#0A66C2', fontWeight: 700 }}
-          />
-          <IconButton
-            size="small"
-            onClick={() => handleCopy('linkedin-post', postBody)}
-            sx={{ color: 'text.secondary', '&:hover': { color: '#C9A84C' } }}
-            title="Copy post"
-          >
-            <ContentCopy fontSize="small" />
-          </IconButton>
-        </Box>
-        <Box
-          sx={{
-            overflow: 'auto',
-            maxHeight: 400,
-            bgcolor: 'rgba(255,255,255,0.03)',
-            borderRadius: 1,
-            p: 1.5,
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}
-          >
-            {postBody}
-          </Typography>
-        </Box>
-      </Paper>
-    </>
-  );
-}
-
-function renderTwitterThread(
-  content: Record<string, unknown>,
-  handleCopy: (key: string, text: string) => void,
-) {
-  const viralHeadline = content.viralHeadline as string;
-  const tweets = (content.tweets as { text: string }[]) ?? [];
-
-  return (
-    <>
-      <Box mb={4} display="flex" justifyContent="center">
-        <Box>
-          <Typography variant="subtitle1" fontWeight={600} mb={2} textAlign="center" sx={{ color: '#EAB308' }}>
-            Social Media Graphic
-          </Typography>
-          <NewsGraphicCard viralHeadline={viralHeadline} imageUrl={content.imageUrl as string | undefined} />
-        </Box>
-      </Box>
-
-      <Typography variant="subtitle1" fontWeight={700} mb={2} sx={{ color: '#C9A84C' }}>
-        Thread ({tweets.length} Tweets)
-      </Typography>
-
-      <Box display="flex" flexDirection="column" gap={2}>
-        {tweets.map((tweet, i) => (
-          <Paper
-            key={i}
-            sx={{ p: 2.5, border: '1px solid rgba(29,161,242,0.25)' }}
-          >
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
-              <Chip
-                label={`${i + 1}`}
-                size="small"
-                sx={{ bgcolor: 'rgba(29,161,242,0.15)', color: '#1DA1F2', fontWeight: 700 }}
-              />
-              <IconButton
-                size="small"
-                onClick={() => handleCopy(`tweet-${i}`, tweet.text)}
-                sx={{ color: 'text.secondary', '&:hover': { color: '#C9A84C' } }}
-                title="Copy tweet"
-              >
-                <ContentCopy fontSize="small" />
-              </IconButton>
-            </Box>
-            <Typography variant="body1" mb={1}>
-              {tweet.text}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {tweet.text.length} / 280
-            </Typography>
-          </Paper>
-        ))}
-      </Box>
-    </>
-  );
+interface HistoryRecord {
+  id: number;
+  platform: string;
+  topic: string;
+  category: string;
+  created_at: string;
 }
 
 export default function ContentHubPage() {
-  const [platform, setPlatform] = useState<Platform>('faceless-reel');
+  const [format, setFormat] = useState<Format>('instagram-carousel');
+  const [category, setCategory] = useState<CarouselCategory>('Data Drop (Market Stats)');
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/content-history');
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchHistory(); }, []);
 
   const handleCopy = (key: string, text: string) => {
     navigator.clipboard.writeText(text).then(() => setCopiedKey(key));
@@ -335,7 +253,7 @@ export default function ContentHubPage() {
       const res = await fetch('/api/generate-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform }),
+        body: JSON.stringify({ platform: format, category: format === 'instagram-carousel' ? category : undefined }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -343,6 +261,7 @@ export default function ContentHubPage() {
       }
       const data: Record<string, unknown> = await res.json();
       setContent(data);
+      fetchHistory();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unexpected error. Please try again.');
     } finally {
@@ -352,11 +271,9 @@ export default function ContentHubPage() {
 
   const renderOutput = () => {
     if (!content) return null;
-    switch (platform) {
+    switch (format) {
       case 'faceless-reel': return renderFacelessReel(content, handleCopy);
       case 'instagram-carousel': return renderInstagramCarousel(content, handleCopy);
-      case 'linkedin-post': return renderLinkedInPost(content, handleCopy);
-      case 'twitter-thread': return renderTwitterThread(content, handleCopy);
     }
   };
 
@@ -371,33 +288,53 @@ export default function ContentHubPage() {
         </Typography>
       </Box>
 
-      <ToggleButtonGroup
-        value={platform}
-        exclusive
-        onChange={(_e, val) => { if (val) { setPlatform(val); setContent(null); } }}
-        sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}
-      >
-        {PLATFORMS.map((p) => (
-          <ToggleButton
-            key={p.value}
-            value={p.value}
+      {/* Format + Category selectors */}
+      <Box display="flex" gap={2} mb={4} flexWrap="wrap" alignItems="flex-start">
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel sx={{ color: 'rgba(201,168,76,0.7)', '&.Mui-focused': { color: '#C9A84C' } }}>
+            Format
+          </InputLabel>
+          <Select
+            value={format}
+            label="Format"
+            onChange={(e) => { setFormat(e.target.value as Format); setContent(null); }}
             sx={{
-              border: '1px solid rgba(201,168,76,0.3) !important',
-              borderRadius: '8px !important',
-              px: 2,
-              py: 1,
-              gap: 1,
-              color: platform === p.value ? '#C9A84C' : 'text.secondary',
-              borderColor: platform === p.value ? '#C9A84C !important' : undefined,
-              '&.Mui-selected': { bgcolor: 'rgba(201,168,76,0.08)', color: '#C9A84C' },
-              '&.Mui-selected:hover': { bgcolor: 'rgba(201,168,76,0.12)' },
+              color: '#C9A84C',
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(201,168,76,0.3)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(201,168,76,0.6)' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#C9A84C' },
+              '& .MuiSvgIcon-root': { color: '#C9A84C' },
             }}
           >
-            {p.icon}
-            <Typography variant="body2" fontWeight={600}>{p.label}</Typography>
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
+            <MenuItem value="instagram-carousel">Instagram Carousel</MenuItem>
+            <MenuItem value="faceless-reel">Faceless Reel</MenuItem>
+          </Select>
+        </FormControl>
+
+        {format === 'instagram-carousel' && (
+          <FormControl size="small" sx={{ minWidth: 260 }}>
+            <InputLabel sx={{ color: 'rgba(201,168,76,0.7)', '&.Mui-focused': { color: '#C9A84C' } }}>
+              Category
+            </InputLabel>
+            <Select
+              value={category}
+              label="Category"
+              onChange={(e) => { setCategory(e.target.value as CarouselCategory); setContent(null); }}
+              sx={{
+                color: '#C9A84C',
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(201,168,76,0.3)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(201,168,76,0.6)' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#C9A84C' },
+                '& .MuiSvgIcon-root': { color: '#C9A84C' },
+              }}
+            >
+              {CAROUSEL_CATEGORIES.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+      </Box>
 
       <Box mb={4} display="flex" alignItems="center" gap={2}>
         <Button
@@ -440,6 +377,61 @@ export default function ContentHubPage() {
       )}
 
       {renderOutput()}
+
+      {/* Content Ledger */}
+      <Box mt={6}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6" fontWeight={700}>Content Ledger</Typography>
+          <Button
+            size="small"
+            onClick={fetchHistory}
+            disabled={historyLoading}
+            sx={{ color: '#C9A84C', borderColor: 'rgba(201,168,76,0.4)', '&:hover': { borderColor: '#C9A84C' } }}
+            variant="outlined"
+          >
+            {historyLoading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </Box>
+        {history.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No content generated yet.</Typography>
+        ) : (
+          <TableContainer component={Paper} sx={{ border: '1px solid rgba(201,168,76,0.15)' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { borderBottom: '1px solid rgba(201,168,76,0.2)', color: '#C9A84C', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.5px' } }}>
+                  <TableCell>DATE</TableCell>
+                  <TableCell>FORMAT</TableCell>
+                  <TableCell>CATEGORY</TableCell>
+                  <TableCell>TOPIC</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {history.map((row) => (
+                  <TableRow key={row.id} sx={{ '&:hover': { bgcolor: 'rgba(201,168,76,0.04)' }, '& td': { borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem' } }}>
+                    <TableCell sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                      {new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={row.platform === 'instagram-carousel' ? 'Carousel' : 'Reel'}
+                        size="small"
+                        sx={{
+                          bgcolor: row.platform === 'instagram-carousel' ? 'rgba(225,48,108,0.15)' : 'rgba(255,76,76,0.15)',
+                          color: row.platform === 'instagram-carousel' ? '#E1306C' : '#FF4C4C',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary' }}>{row.category || '—'}</TableCell>
+                    <TableCell sx={{ color: 'text.primary' }}>{row.topic}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
 
       <Snackbar
         open={copiedKey !== null}

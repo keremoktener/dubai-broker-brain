@@ -2,6 +2,12 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export type Platform = 'faceless-reel' | 'instagram-carousel' | 'linkedin-post' | 'twitter-thread';
 
+export type CarouselCategory =
+  | 'Data Drop (Market Stats)'
+  | 'Investor Trap (Mistakes)'
+  | 'Area Arbitrage (Comparisons)'
+  | 'Global Shift (Macro)';
+
 interface BasePayload {
   topic: string;
   imageSearchKeyword: string;
@@ -50,12 +56,15 @@ Topic selection rules:
 
 Tone: emotionally detached, authoritative, institutional. ABSOLUTELY NO emojis, NO hashtags, NO exclamation points, NO asking for engagement.
 
-You always respond with raw valid JSON only. No markdown, no code fences. Your entire response must be parseable by JSON.parse() with no pre-processing.`;
+You always respond with raw valid JSON only. No markdown, no code fences. Your entire response must be parseable by JSON.parse() with no pre-processing.
+
+ABSOLUTE CONTENT RULE — BAN PARAGRAPHS: Never write flowing sentences or paragraphs in slide content. Every slide bodyText MUST contain a maximum of 15 words total. Use big numbers, short bullet points, and extreme brevity. Format bodyText as bullet points separated by \n, each starting with "• ". High-net-worth investors scan, they do not read.`;
 
 function buildPrompt(
   platform: Platform,
   recentTopics: string[],
   headlines: string[],
+  category?: string,
 ): { system: string; user: string } {
   const historyBlock = recentTopics.length > 0
     ? `RECENT TOPICS COVERED (do not repeat these):\n${recentTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
@@ -105,7 +114,38 @@ function buildPrompt(
         ].join('\n'),
       };
 
-    case 'instagram-carousel':
+    case 'instagram-carousel': {
+      const categoryInstructions: Record<string, string> = {
+        'Data Drop (Market Stats)': [
+          'CATEGORY: DATA DROP — Every slide must be a raw number or statistic.',
+          '- Each bodyText = exactly 1-2 metrics with a % change or AED figure.',
+          '- Format: "• [Number] [Unit]\\n• [Comparison]"',
+          '- Example bodyText: "• AED 3,200/sqft avg\\n• +42% vs 2022"',
+        ].join('\n'),
+        'Investor Trap (Mistakes)': [
+          'CATEGORY: INVESTOR TRAP — Each slide exposes one common mistake HNWIs make.',
+          '- heading = the mistake in 3-5 words.',
+          '- bodyText = consequence + one hard number. Max 2 bullets.',
+          '- Format: "• [Mistake consequence]\\n• [Data point]"',
+        ].join('\n'),
+        'Area Arbitrage (Comparisons)': [
+          'CATEGORY: AREA ARBITRAGE — Each slide compares 2 Dubai areas or asset types.',
+          '- heading = the comparison label (e.g., "Marina vs Business Bay").',
+          '- bodyText = 2 bullets: one stat per side. Use AED or % figures.',
+          '- Format: "• [Area A]: [stat]\\n• [Area B]: [stat]"',
+        ].join('\n'),
+        'Global Shift (Macro)': [
+          'CATEGORY: GLOBAL SHIFT — Each slide connects a global macro event to Dubai RE opportunity.',
+          '- heading = the global event in 3-5 words.',
+          '- bodyText = Dubai\'s specific advantage. Max 2 bullets with numbers.',
+          '- Format: "• [Global pressure]\\n• Dubai: [counter-stat]"',
+        ].join('\n'),
+      };
+
+      const categoryBlock = category && categoryInstructions[category]
+        ? `\n\n${categoryInstructions[category]}`
+        : '';
+
       return {
         system: GLOBAL_PERSONA,
         user: [
@@ -127,11 +167,15 @@ function buildPrompt(
           '',
           'Platform rules:',
           '- slides: exactly 5 objects.',
-          '- Slide 1: brutal data-backed hook. heading = provocative statement with specific number. bodyText (2-3 sentences) = raw data.',
-          '- Slides 2-4: raw market intelligence with figures, percentages, area names.',
-          '- Slide 5: cold institutional verdict. No call-to-action.',
+          '- heading: maximum 6 words. No punctuation except colons.',
+          '- bodyText: MAXIMUM 15 WORDS TOTAL. Bullet points separated by \\n, each starting with "• ". NO SENTENCES. NO PARAGRAPHS.',
+          '- Slide 1: brutal data-backed hook. heading = provocative claim with a number.',
+          '- Slides 2-4: each slide = one hard fact or comparison.',
+          '- Slide 5: cold verdict. One short declarative statement.',
+          categoryBlock,
         ].join('\n'),
       };
+    }
 
     case 'linkedin-post':
       return {
@@ -188,9 +232,10 @@ export async function generateInboundContent(
   platform: Platform,
   recentTopics: string[],
   headlines: string[],
+  category?: string,
 ): Promise<ContentPayload> {
   const anthropic = getClient();
-  const { system, user } = buildPrompt(platform, recentTopics, headlines);
+  const { system, user } = buildPrompt(platform, recentTopics, headlines, category);
 
   console.log(`[contentGenerator] Generating autonomous content for platform: ${platform}`);
 

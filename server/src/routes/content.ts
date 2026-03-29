@@ -2,7 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import Parser from 'rss-parser';
 import { generateInboundContent, Platform } from '../services/contentGenerator.js';
-import { getRecentTopics, saveContentHistory } from '../services/contentHistory.js';
+import { getRecentTopics, saveContentHistory, getAllHistory } from '../services/contentHistory.js';
 
 const VALID_PLATFORMS: Platform[] = ['faceless-reel', 'instagram-carousel', 'linkedin-post', 'twitter-thread'];
 
@@ -55,7 +55,7 @@ async function fetchUnsplashImage(keyword: string): Promise<string | null> {
 const router = express.Router();
 
 router.post('/generate-content', async (req, res) => {
-  const { platform } = req.body;
+  const { platform, category } = req.body;
 
   if (!platform || !VALID_PLATFORMS.includes(platform as Platform)) {
     res.status(400).json({
@@ -65,26 +65,38 @@ router.post('/generate-content', async (req, res) => {
   }
 
   try {
-    // 1. Fetch history and live headlines in parallel
     const [recentTopics, headlines] = await Promise.all([
       Promise.resolve(getRecentTopics(25)),
       fetchDubaiHeadlines(),
     ]);
 
-    // 2. Generate content autonomously
-    const content = await generateInboundContent(platform as Platform, recentTopics, headlines);
+    const content = await generateInboundContent(
+      platform as Platform,
+      recentTopics,
+      headlines,
+      typeof category === 'string' ? category : undefined,
+    );
 
-    // 3. Fetch Unsplash image in parallel with saving history
     const [imageUrl] = await Promise.all([
       fetchUnsplashImage(content.imageSearchKeyword),
-      Promise.resolve(saveContentHistory(platform, content.topic)),
+      Promise.resolve(saveContentHistory(platform, content.topic, typeof category === 'string' ? category : '')),
     ]);
 
-    // 4. Return everything
     res.json({ ...content, imageUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[content route] Error:', message);
+    res.status(500).json({ error: message });
+  }
+});
+
+router.get('/content-history', (_req, res) => {
+  try {
+    const history = getAllHistory(100);
+    res.json(history);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[content route] Error fetching history:', message);
     res.status(500).json({ error: message });
   }
 });

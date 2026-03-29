@@ -18,6 +18,12 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     initSchema();
+    // Migration: add category column if not present
+    try {
+      db.exec(`ALTER TABLE content_history ADD COLUMN category TEXT NOT NULL DEFAULT ''`);
+    } catch {
+      // Column already exists — ignore
+    }
   }
   return db;
 }

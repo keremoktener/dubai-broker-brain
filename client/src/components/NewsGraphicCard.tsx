@@ -91,18 +91,21 @@ export default function NewsGraphicCard({ viralHeadline, heading, bodyText, file
                 {heading}
               </Typography>
               <Box sx={{ borderBottom: '1px solid rgba(234,179,8,0.2)', width: '40%' }} />
-              <Typography sx={{
-                fontSize: 38,
-                fontWeight: 400,
-                color: 'rgba(255,255,255,0.82)',
-                lineHeight: 1.55,
-                textAlign: 'center',
-                maxWidth: '85%',
-                fontFamily: 'inherit',
-                letterSpacing: '0.2px',
-              }}>
-                {bodyText}
-              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center', maxWidth: '85%' }}>
+                {(bodyText ?? '').split('\n').filter(Boolean).map((line, idx) => (
+                  <Typography key={idx} sx={{
+                    fontSize: 44,
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    lineHeight: 1.2,
+                    textAlign: 'center',
+                    fontFamily: 'inherit',
+                    letterSpacing: '-0.5px',
+                  }}>
+                    {line.trim()}
+                  </Typography>
+                ))}
+              </Box>
             </Box>
           ) : (
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', px: '40px' }}>
